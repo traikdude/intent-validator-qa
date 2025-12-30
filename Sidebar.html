@@ -2,133 +2,284 @@
 <html>
   <head>
     <base target="_top">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
+      :root {
+        --primary: #FF6B9D;
+        --secondary: #4ECDC4;
+        --accent: #FFE66D;
+        --bg: #F7F9FB;
+        --text: #2D3436;
+        --white: #FFFFFF;
+        --gradient: linear-gradient(135deg, #FF6B9D 0%, #FF8E9D 100%);
+      }
+
       body {
-        font-family: 'Roboto', sans-serif;
-        padding: 12px;
-        background-color: #f8f9fa;
-        color: #202124;
+        font-family: 'Poppins', sans-serif;
+        padding: 0;
+        margin: 0;
+        background-color: var(--bg);
+        color: var(--text);
+        overflow-x: hidden;
       }
-      .card {
-        background: white;
-        border-radius: 8px;
-        padding: 16px;
-        box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
-        margin-bottom: 16px;
-      }
-      h2 {
-        margin: 0 0 12px 0;
-        font-size: 16px;
-        color: #5f6368;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      .status-box {
-        padding: 12px;
-        border-radius: 4px;
-        font-weight: 500;
+
+      .header {
+        background: var(--gradient);
+        color: var(--white);
+        padding: 20px 15px;
         text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      }
+
+      .header h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 1px;
+      }
+
+      .container {
+        padding: 15px;
+      }
+
+      .card {
+        background: var(--white);
+        border-radius: 12px;
+        padding: 15px;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+        border-left: 4px solid var(--primary);
+        transition: transform 0.2s;
+      }
+
+      .card:hover {
+        transform: translateY(-2px);
+      }
+
+      h2 {
+        margin: 0 0 10px 0;
+        font-size: 12px;
+        color: #B2BEC3;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+      }
+
+      .status-box {
+        padding: 15px;
+        border-radius: 8px;
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 15px;
+        font-size: 14px;
+        animation: fadeIn 0.5s ease;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+      }
+
+      .match { background-color: #E3FCEF; color: #00875A; border: 1px solid #ABF5D1; }
+      .mismatch { background-color: #FFEBE6; color: #BF2600; border: 1px solid #FFBDAD; }
+      .loading { background-color: #DEEBFF; color: #0747A6; }
+      
+      .data-row {
         margin-bottom: 12px;
       }
-      .match { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
-      .mismatch { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
-      .loading { background-color: #e8f0fe; color: #1967d2; }
-      
-      .detail-row {
-        margin-bottom: 8px;
-        font-size: 13px;
+
+      .label { 
+        font-size: 10px; 
+        font-weight: 600; 
+        color: #636E72; 
+        display: block;
+        margin-bottom: 4px;
       }
-      .label { color: #5f6368; font-size: 11px; }
-      .value { font-weight: 500; word-break: break-word; }
-      
+
+      .value { 
+        font-size: 13px; 
+        font-weight: 500; 
+        word-break: break-word; 
+        color: var(--text);
+        background: #F1F2F6;
+        padding: 6px 10px;
+        border-radius: 6px;
+        display: block;
+      }
+
+      .btn-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
       button {
-        background-color: #1a73e8;
-        color: white;
+        background: var(--gradient);
+        color: var(--white);
         border: none;
-        padding: 10px 24px;
-        border-radius: 4px;
-        font-weight: 500;
+        padding: 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-family: 'Poppins', sans-serif;
         cursor: pointer;
         width: 100%;
-        transition: background-color 0.2s;
+        box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+        transition: all 0.2s;
       }
-      button:hover { background-color: #1557b0; }
-      button:disabled { background-color: #dadce0; color: #80868b; cursor: default; }
+
+      button:hover:not(:disabled) {
+        transform: scale(1.02);
+        box-shadow: 0 6px 20px rgba(255, 107, 157, 0.4);
+      }
+
+      button:active {
+        transform: scale(0.98);
+      }
+
+      button:disabled {
+        background: #DFE6E9;
+        color: #B2BEC3;
+        box-shadow: none;
+        cursor: not-allowed;
+      }
+
+      .btn-fix {
+        background: linear-gradient(135deg, #4ECDC4 0%, #45B7AF 100%);
+        box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
+      }
+
+      .btn-fix:hover:not(:disabled) {
+        box-shadow: 0 6px 20px rgba(78, 205, 196, 0.4);
+      }
+
+      .footer-msg {
+        font-size: 10px;
+        text-align: center;
+        color: #B2BEC3;
+        margin-top: 20px;
+      }
     </style>
   </head>
   <body>
-    <div class="card">
-      <h2>Active Row Validator ⚡</h2>
-      <div id="status" class="status-box loading">Ready to Validate</div>
-      
-      <div class="detail-row">
-        <div class="label">TRIGGER PHRASE</div>
-        <div id="trigger" class="value">-</div>
+    <div class="header">
+      <h1>Intent Validator ⚡</h1>
+    </div>
+
+    <div class="container">
+      <div id="status" class="status-box loading">Ready for Magic ✨</div>
+
+      <div class="card">
+        <h2>Row Intel 🕵️‍♀️</h2>
+        
+        <div class="data-row">
+          <span class="label">TRIGGER</span>
+          <span id="trigger" class="value">-</span>
+        </div>
+        
+        <div class="data-row">
+          <span class="label">CURRENT</span>
+          <span id="current" class="value">-</span>
+        </div>
+        
+        <div class="data-row">
+          <span class="label">PREDICTED</span>
+          <span id="predicted" class="value" style="color: var(--primary); font-weight: 700;">-</span>
+        </div>
+
+        <div id="pattern-row" class="data-row" style="display:none;">
+          <span class="label">MATCHED PATTERN</span>
+          <span id="pattern" class="value" style="font-family: monospace; font-size: 11px;">-</span>
+        </div>
       </div>
-      
-      <div class="detail-row">
-        <div class="label">CURRENT INTENT</div>
-        <div id="current" class="value">-</div>
+
+      <div class="btn-container">
+        <button id="btn-check" onclick="validateRow()">Scan Active Row 🔍</button>
+        <button id="btn-fix" class="btn-fix" onclick="applyFix()" style="display:none;">Auto-Fix Intent ✅</button>
       </div>
-      
-      <div class="detail-row">
-        <div class="label">PREDICTED INTENT</div>
-        <div id="predicted" class="value">-</div>
+
+      <div class="footer-msg">
+        Crafted with ❤️ by GAS Master 🧙🏾‍♂️
       </div>
     </div>
 
-    <button id="btn" onclick="validateRow()">Check Active Row 🔍</button>
-
     <script>
-      function validateRow() {
-        const btn = document.getElementById('btn');
-        const status = document.getElementById('status');
-        
-        btn.disabled = true;
-        btn.innerText = 'Analyzing... ⏳';
-        status.className = 'status-box loading';
-        status.innerText = 'Scanning...';
+      let currentResult = null;
 
+      function validateRow() {
+        setLoading(true);
         google.script.run
           .withSuccessHandler(showResult)
           .withFailureHandler(showError)
           .validateActiveRow();
       }
 
-      function showResult(result) {
-        const btn = document.getElementById('btn');
-        const status = document.getElementById('status');
+      function applyFix() {
+        if (!currentResult || !currentResult.predicted) return;
         
-        btn.disabled = false;
-        btn.innerText = 'Check Active Row 🔍';
+        const btnFix = document.getElementById('btn-fix');
+        btnFix.disabled = true;
+        btnFix.innerText = 'Fixing... 🛠️';
+
+        google.script.run
+          .withSuccessHandler((res) => {
+            alert(res.message);
+            validateRow(); // Re-scan after fix
+          })
+          .withFailureHandler(showError)
+          .applyPredictedIntent(currentResult.row, currentResult.predicted);
+      }
+
+      function showResult(result) {
+        setLoading(false);
+        currentResult = result;
+
+        const status = document.getElementById('status');
+        const btnFix = document.getElementById('btn-fix');
+        const patternRow = document.getElementById('pattern-row');
 
         if (!result.valid) {
-          status.className = 'status-box';
-          status.innerText = result.message || 'Invalid Sheet/Row';
+          status.className = 'status-box mismatch';
+          status.innerText = result.message || 'Invalid Area 🚫';
+          btnFix.style.display = 'none';
           return;
         }
 
         document.getElementById('trigger').innerText = result.trigger;
         document.getElementById('current').innerText = result.current;
         document.getElementById('predicted').innerText = result.predicted;
+        document.getElementById('pattern').innerText = result.pattern;
+        patternRow.style.display = 'block';
 
         if (result.match) {
           status.className = 'status-box match';
-          status.innerText = '✅ MATCH';
+          status.innerText = '✅ PERFECT MATCH!';
+          btnFix.style.display = 'none';
         } else {
           status.className = 'status-box mismatch';
-          status.innerText = '⚠️ MISMATCH';
+          status.innerText = '⚠️ MISMATCH DETECTED';
+          btnFix.style.display = 'block';
+          btnFix.disabled = false;
+          btnFix.innerText = 'Auto-Fix Intent ✅';
+        }
+      }
+
+      function setLoading(isLoading) {
+        const btnCheck = document.getElementById('btn-check');
+        const status = document.getElementById('status');
+        
+        btnCheck.disabled = isLoading;
+        btnCheck.innerText = isLoading ? 'Analyzing... 🔮' : 'Scan Active Row 🔍';
+        
+        if (isLoading) {
+          status.className = 'status-box loading';
+          status.innerText = 'Consulting the Oracles... ⏳';
         }
       }
 
       function showError(err) {
-        const btn = document.getElementById('btn');
+        setLoading(false);
         const status = document.getElementById('status');
-        btn.disabled = false;
-        btn.innerText = 'Check Active Row 🔍';
         status.className = 'status-box mismatch';
-        status.innerText = 'Error: ' + err.message;
+        status.innerText = 'Error: ' + err.message + ' 😭';
       }
     </script>
   </body>

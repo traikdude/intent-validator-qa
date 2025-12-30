@@ -21,9 +21,10 @@ This tool is designed for speed and scalability, using **Batch Processing** to h
 ## ✨ Key Features
 
 *   **⚡ Batch Optimization**: Reads entire sheets in a single API call, processing data in-memory for blazing-fast performance.
+*   **🧠 Auto-Fix Engine**: Correct intent mismatches directly from the sidebar with a single click! 🛠️✅
+*   **🎨 Joyful UI**: A vibrant, interactive sidebar interface built with the "Joyful UI Protocol" (Poppins fonts, gradients, and micro-interactions).
 *   **📊 Auto-Dashboard**: Automatically generates a "QA – Dashboard" sheet with summary statistics and visual bar charts of mismatch rates.
-*   **🧠 Regex Rules**: Uses regex-enabled pattern matching for precise intent classification (e.g., `^Create.*`).
-*   **🖥️ Validation Sidebar**: Real-time validation UI for checking active rows instantly.
+*   **🔍 Regex Rules**: Uses regex-enabled pattern matching for precise intent classification (e.g., `^Create.*`).
 *   **🛡️ Legacy Protection**: Automatically skips sheets marked with `(Legacy)` to preserve historical data.
 
 ---
@@ -31,13 +32,14 @@ This tool is designed for speed and scalability, using **Batch Processing** to h
 ## 🛠️ How to Use
 
 1.  **Open the Sheet**: Go to the [Live Google Sheet](https://docs.google.com/spreadsheets/d/1DO9SUFmOwTPFvnvUks8-hhBxqzMYl3hhTGlBJ3fsMxQ/edit).
-2.  **Locate the Menu**: Look for the **"Validation ⚡"** menu in the top toolbar (wait a few seconds after loading).
+2.  **Locate the Menu**: Look for the **"Validation ⚡"** menu in the top toolbar.
 3.  **Run Audit**:
-    *   Select **Run Full Intent Audit 🧪** to scan all valid sheets.
-    *   Select **Show Validation Sidebar 🖥️** for real-time checking.
-4.  **View Results**:
-    *   Detailed row-by-row logs are generated in the **"QA – Intent Validation Report"** tab.
-    *   A high-level visual summary is created in the **"QA – Dashboard 📊"** tab.
+    *   Select **Run Full Intent Audit 🧪** to generate a comprehensive report.
+4.  **Real-Time Validation**:
+    *   Select **Show Validation Sidebar 🖥️**.
+    *   Click on any row in your sheet.
+    *   Click **"Scan Active Row 🔍"** in the sidebar.
+    *   If a mismatch is found, click **"Auto-Fix Intent ✅"** to instantly update the sheet!
 
 ---
 
@@ -70,4 +72,4 @@ This project is managed via `clasp` and `git` with CI/CD powered by GitHub Actio
 
 ---
 
-*Generated with ❤️ by Gemini CLI*
+*Generated with ❤️ by Gemini CLI & GAS Master 🧙🏾‍♂️*
