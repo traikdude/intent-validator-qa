@@ -1,20 +1,26 @@
 /**
- * Intent Validator for Google Sheets - Expert Edition ⚡🧠
- * - Refined isIntegrationSheet_ logic with AGGRESSIVE HEADER NORMALIZATION
- * - Fixes "Not an Integration Sheet" errors caused by hidden spaces/formatting
+ * Intent Validator for Google Sheets - Hybrid Workflow Edition ⚡🐍
+ * Optimized for Python-normalized headers and automated QA.
+ * Author: GAS Master 🧙🏾‍♂️
+ * Version: 2.2.0
  */
 
 const CONFIG = {
   REPORT_SHEET_NAME: "QA – Intent Validation Report",
   SKIP_SHEETS: ["Trigger Matrix", "Trigger Overlaps", "Action Intent Audit", "QA – Intent Validation Report", "QA – Dashboard 📊"],
   LEGACY_MARKER: "(Legacy)",
+  NORMALIZED_MARKER: "_Normalized",
   INTENT_RULES_FILE_ID: "10aXUKl0qKGY6a5aGRyPzpG965_vB8pqw",
-  OVERRIDE_HEADER: "Action Intent Override",
-  ACTION_HEADER: "Action Type/Intent",
-  TRIGGER_HEADER: "Automation Trigger Phrase",
-  RECOMMENDED_HEADER: "Recommended Disambiguated Phrase"
+  // Standardized keys matching Python NLP output
+  OVERRIDE_HEADER: "actionintentoverride",
+  ACTION_HEADER: "actiontypeintent",
+  TRIGGER_HEADER: "automationtriggerphrase",
+  RECOMMENDED_HEADER: "recommendeddisambiguatedphrase"
 };
 
+/**
+ * Creates the custom menu on Spreadsheet Open 📂
+ */
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("Validation ⚡")
@@ -26,6 +32,9 @@ function onOpen() {
     .addToUi();
 }
 
+/**
+ * Displays the Joyful Sidebar UI 🖥️✨
+ */
 function showSidebar() {
   const html = HtmlService.createTemplateFromFile('Sidebar')
     .evaluate()
@@ -34,6 +43,9 @@ function showSidebar() {
   SpreadsheetApp.getUi().showSidebar(html);
 }
 
+/**
+ * Called by Sidebar.html to validate the currently selected row 🔍
+ */
 function validateActiveRow() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -41,18 +53,16 @@ function validateActiveRow() {
     const rowIdx = sheet.getActiveRange().getRow();
     
     const sheetName = sheet.getName();
-    // Get header row (Row 1)
     const firstRowValues = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     
-    // SMART CHECK: Is this an integration sheet?
-    // Pass raw values for logic check
-    const integrationCheck = isIntegrationSheet_(sheetName, firstRowValues);
+    // SMART CHECK: Validate via normalized logic
+    const check = isIntegrationSheet_(sheetName, firstRowValues);
     
-    if (!integrationCheck.isValid) {
+    if (!check.isValid) {
       return { 
         valid: false, 
         message: "Not an Integration Sheet 🚫",
-        debug: integrationCheck.reason // Return exact reason for failure
+        debug: check.reason
       };
     }
     
@@ -60,21 +70,20 @@ function validateActiveRow() {
       return { valid: false, message: "Header Row Selected 📑" };
     }
 
-    // Build Normalized Header Map
+    // Build Map using Alphanumeric Normalization
     const hm = headerMap_(firstRowValues);
     
-    // Resolve Indices using Normalized Keys
-    const idxTrig = hm[normalizeHeader_(CONFIG.TRIGGER_HEADER)];
-    const idxRec  = hm[normalizeHeader_(CONFIG.RECOMMENDED_HEADER)];
-    const idxAct  = hm[normalizeHeader_(CONFIG.ACTION_HEADER)];
-    const idxOverride = hm[normalizeHeader_(CONFIG.OVERRIDE_HEADER)];
+    // Direct lookup using standardized CONFIG keys
+    const idxTrig = hm[CONFIG.TRIGGER_HEADER];
+    const idxRec  = hm[CONFIG.RECOMMENDED_HEADER];
+    const idxAct  = hm[CONFIG.ACTION_HEADER];
+    const idxOverride = hm[CONFIG.OVERRIDE_HEADER];
 
-    // Final sanity check on required columns
     if (idxTrig === undefined || idxAct === undefined) {
       return { 
         valid: false, 
         message: "Missing Required Columns ❌",
-        debug: `Found headers: ${Object.keys(hm).join(", ")}`
+        debug: `Needs: '${CONFIG.TRIGGER_HEADER}' & '${CONFIG.ACTION_HEADER}'`
       };
     }
 
@@ -109,72 +118,70 @@ function validateActiveRow() {
   }
 }
 
+/**
+ * Applies the predicted intent directly to the sheet 🛠️✅
+ */
 function applyPredictedIntent(row, predictedValue) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getActiveSheet();
     const firstRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     const hm = headerMap_(firstRow);
-    const idxAct = hm[normalizeHeader_(CONFIG.ACTION_HEADER)];
+    const idxAct = hm[CONFIG.ACTION_HEADER];
 
     if (idxAct === undefined) throw new Error("Action Type column not found! ❌");
 
     sheet.getRange(row, idxAct + 1).setValue(predictedValue);
-    sheet.getRange(row, idxAct + 1).setBackground("#d4edda"); 
+    sheet.getRange(row, idxAct + 1).setBackground("#d4edda"); // Success highlight
     
     return { success: true, message: "Intent Updated Successfully! 🎉" };
   } catch (error) {
-    return { success: false, message: "Failed to update ⚠️" };
+    return { success: false, message: "Failed to update: " + error.message + " ⚠️" };
   }
 }
 
+/**
+ * Loads intent rules from Google Drive 📂
+ */
 function loadIntentRules_() {
   const file = DriveApp.getFileById(CONFIG.INTENT_RULES_FILE_ID);
   return JSON.parse(file.getBlob().getDataAsString());
 }
 
 /**
- * 🧠 SMART INTEGRATION CHECK v2
- * Returns detailed object instead of boolean for better debugging
+ * 🧠 INTELLIGENT SHEET DETECTOR
+ * Detects if a sheet is valid for integration audit.
  */
 function isIntegrationSheet_(sheetName, firstRowValues) {
-  // 1. Check Skip List & Legacy Marker
-  if (CONFIG.SKIP_SHEETS.indexOf(sheetName) !== -1) {
-    return { isValid: false, reason: `Sheet '${sheetName}' is in skip list.` };
-  }
-  if (sheetName.indexOf(CONFIG.LEGACY_MARKER) !== -1) {
-    return { isValid: false, reason: `Sheet '${sheetName}' is marked Legacy.` };
-  }
+  // 1. Basic Exclusions
+  if (CONFIG.SKIP_SHEETS.indexOf(sheetName) !== -1) return { isValid: false, reason: "Sheet is in skip list." };
+  if (sheetName.indexOf(CONFIG.LEGACY_MARKER) !== -1) return { isValid: false, reason: "Sheet is marked Legacy." };
   
-  // 2. Map the headers (Normalized)
+  // 2. Build Map
   const hm = headerMap_(firstRowValues);
   
-  // 3. Check for Required Columns using Normalized Keys
-  const reqTrigger = normalizeHeader_(CONFIG.TRIGGER_HEADER);
-  const reqAction = normalizeHeader_(CONFIG.ACTION_HEADER);
-  
-  const hasTrigger = hm[reqTrigger] !== undefined;
-  const hasAction = hm[reqAction] !== undefined;
+  // 3. Validation Logic
+  const hasTrigger = hm[CONFIG.TRIGGER_HEADER] !== undefined;
+  const hasAction = hm[CONFIG.ACTION_HEADER] !== undefined;
   
   if (hasTrigger && hasAction) {
     return { isValid: true };
-  } else {
-    return { 
-      isValid: false, 
-      reason: `Missing Columns. Need: '${reqTrigger}' & '${reqAction}'. Found: ${Object.keys(hm).join(", ")}` 
-    };
   }
+  
+  return { 
+    isValid: false, 
+    reason: `Missing headers. Found: ${Object.keys(hm).join(", ")}` 
+  };
 }
 
 /**
- * 🧹 HEADER MAPPER v2
- * Creates map of { "normalizedheaderstring": columnIndex }
+ * 🧹 HEADER MAPPER
+ * Creates map of { "normalizedheader": columnIndex }
  */
 function headerMap_(headerRow) {
   const map = {};
   headerRow.forEach((h, i) => {
     if (h) {
-      // Normalize: Lowercase + remove ALL non-alphanumeric chars (spaces, symbols, etc)
       const cleanHeader = normalizeHeader_(String(h));
       if (cleanHeader) map[cleanHeader] = i;
     }
@@ -183,16 +190,19 @@ function headerMap_(headerRow) {
 }
 
 /**
- * 🧼 HELPER: Normalizes header strings for robust comparison
- * "Automation Trigger Phrase " -> "automationtriggerphrase"
- * "Action Type / Intent" -> "actiontypeintent"
+ * 🧼 NORMALIZER
+ * Strips all non-alphanumeric chars and lowercases.
+ * Matches Python NLP logic.
  */
 function normalizeHeader_(str) {
   return str.toString()
             .toLowerCase()
-            .replace(/[^a-z0-9]/g, ''); // Remove everything except letters/numbers
+            .replace(/[^a-z0-9]/g, '');
 }
 
+/**
+ * Core Regex Classifier Logic 🧠🔍
+ */
 function classifyAction_(trigger, recommended, rulesJson) {
   const t = ((trigger || "") + " " + (recommended || "")).trim();
   const order = rulesJson.actions_order || [];
@@ -216,15 +226,21 @@ function classifyAction_(trigger, recommended, rulesJson) {
   return { action: "Search/Query", pattern: "Default Fallback" };
 }
 
+/**
+ * Setup and Maintenance 🔐
+ */
 function setupIntentValidator() {
   try {
     loadIntentRules_();
     SpreadsheetApp.getUi().alert("Setup Successful! 🚀");
   } catch (e) {
-    SpreadsheetApp.getUi().alert("Setup Failed! Check Rules File ID.");
+    SpreadsheetApp.getUi().alert("Setup Failed! ⚠️");
   }
 }
 
+/**
+ * Runs a full audit and generates a mismatch report 🧪📑
+ */
 function runIntentAudit() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const rulesJson = loadIntentRules_();
@@ -236,15 +252,14 @@ function runIntentAudit() {
     const values = sheet.getDataRange().getValues();
     if (values.length < 2) return;
     
-    // Note: isIntegrationSheet_ returns object now
     const check = isIntegrationSheet_(sheetName, values[0]);
     if (!check.isValid) return;
 
     const hm = headerMap_(values[0]);
-    const idxTrig = hm[normalizeHeader_(CONFIG.TRIGGER_HEADER)];
-    const idxRec  = hm[normalizeHeader_(CONFIG.RECOMMENDED_HEADER)];
-    const idxAct  = hm[normalizeHeader_(CONFIG.ACTION_HEADER)];
-    const idxOverride = hm[normalizeHeader_(CONFIG.OVERRIDE_HEADER)];
+    const idxTrig = hm[CONFIG.TRIGGER_HEADER];
+    const idxRec  = hm[CONFIG.RECOMMENDED_HEADER];
+    const idxAct  = hm[CONFIG.ACTION_HEADER];
+    const idxOverride = hm[CONFIG.OVERRIDE_HEADER];
 
     for (let i = 1; i < values.length; i++) {
       const row = values[i];
@@ -260,28 +275,45 @@ function runIntentAudit() {
       }
 
       const classification = classifyAction_(String(trig), String(rec), rulesJson);
-      if (current !== classification.action) {
-        out.push([timestamp, sheetName, i + 1, trig, rec, current, classification.action, "MISMATCH ⚠️", classification.pattern]);
+      const predicted = classification.action;
+      
+      if (current !== predicted) {
+        out.push([
+          timestamp, sheetName, i + 1, trig, rec, current, predicted, "MISMATCH ⚠️", classification.pattern
+        ]);
       }
     }
   });
 
   const rep = ensureReportSheet_(ss);
-  if (out.length === 0) out.push([timestamp, "INFO", "", "", "", "", "", "ALL MATCH ✅", ""]);
+  if (out.length === 0) {
+    out.push([timestamp, "INFO", "", "", "", "", "", "ALL MATCH ✅", ""]);
+  }
   rep.getRange(2, 1, out.length, 9).setValues(out);
   createSummaryDashboard();
 }
 
+/**
+ * Ensures the Report Sheet exists and is clean 🛡️
+ */
 function ensureReportSheet_(ss) {
   let rep = ss.getSheetByName(CONFIG.REPORT_SHEET_NAME);
   if (rep) ss.deleteSheet(rep);
   rep = ss.insertSheet(CONFIG.REPORT_SHEET_NAME, 0);
-  const headers = ["Timestamp", "Sheet Name", "Row Number", "Trigger Phrase", "Recommended Phrase", "Current Action", "Predicted Action", "Match Status", "Diagnostic Info"];
+
+  const headers = [
+    "Timestamp", "Sheet Name", "Row Number", "Trigger Phrase",
+    "Recommended Phrase", "Current Action", "Predicted Action",
+    "Match Status", "Diagnostic Info"
+  ];
   rep.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold").setBackground("#d9ead3");
   rep.setFrozenRows(1);
   return rep;
 }
 
+/**
+ * Generates a visual Dashboard for QA metrics 📊📉
+ */
 function createSummaryDashboard() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const reportSheet = ss.getSheetByName(CONFIG.REPORT_SHEET_NAME);
@@ -303,7 +335,7 @@ function createSummaryDashboard() {
     if (sheetName === "INFO" || !sheetName) continue;
 
     if (!sheetStats[sheetName]) sheetStats[sheetName] = 0;
-    if (status.includes("MISMATCH")) {
+    if (status && status.includes("MISMATCH")) {
       sheetStats[sheetName]++;
       totalMismatches++;
     }

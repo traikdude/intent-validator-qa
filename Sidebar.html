@@ -239,6 +239,15 @@
         if (!result.valid) {
           status.className = 'status-box mismatch';
           status.innerText = result.message || 'Invalid Area 🚫';
+          
+          // NEW: Show Debug Info if available
+          if (result.debug) {
+             const debugDiv = document.getElementById('pattern-row');
+             debugDiv.style.display = 'block';
+             document.getElementById('pattern').innerText = result.debug;
+             document.querySelector('#pattern-row .label').innerText = "DEBUG INFO";
+          }
+          
           btnFix.style.display = 'none';
           return;
         }
