@@ -1,7 +1,8 @@
 /***************
- * Intent Validator for Google Sheets (Batch Optimized) ⚡
- * - Reads entire sheet data once per sheet 🚀
- * - Minimizes SpreadsheetApp calls 📉
+ * Intent Validator for Google Sheets (Regex + Sidebar Edition) ⚡🧠
+ * - Batch Processing 🚀
+ * - Regex Pattern Matching 🔍
+ * - Real-time Sidebar UI 🖥️
  ***************/
 
 const CONFIG = {
@@ -19,16 +20,80 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("Validation ⚡")
     .addItem("Run Full Intent Audit 🧪", "runIntentAudit")
-    .addItem("Validate Active Sheet Only 📄", "runIntentAuditActiveSheet")
+    .addItem("Show Validation Sidebar 🖥️", "showSidebar")
     .addSeparator()
     .addItem("Generate Dashboard 📊", "createSummaryDashboard")
     .addItem("Setup / Re-Authorize 🔐", "setupIntentValidator")
     .addToUi();
 }
 
+function showSidebar() {
+  const html = HtmlService.createHtmlOutputFromFile('Sidebar')
+    .setTitle('Intent Validator ⚡')
+    .setWidth(300);
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+/**
+ * Called by Sidebar.html to validate the currently selected row
+ */
+function validateActiveRow() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getActiveSheet();
+  const rowIdx = sheet.getActiveRange().getRow();
+  
+  // Basic validation checks
+  const sheetName = sheet.getName();
+  const firstRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  
+  if (!isIntegrationSheet_(sheetName, firstRow)) {
+    return { valid: false, message: "Not an Integration Sheet 🚫" };
+  }
+  
+  if (rowIdx < 2) {
+    return { valid: false, message: "Header Row Selected 📑" };
+  }
+
+  const hm = headerMap_(firstRow);
+  const idxTrig = hm[CONFIG.TRIGGER_HEADER];
+  const idxRec  = hm[CONFIG.RECOMMENDED_HEADER];
+  const idxAct  = hm[CONFIG.ACTION_HEADER];
+  const idxOverride = hm[CONFIG.OVERRIDE_HEADER]; // 0-based indices
+
+  if (idxTrig === undefined || idxAct === undefined) {
+    return { valid: false, message: "Missing Required Columns ❌" };
+  }
+
+  // Fetch row data
+  const rowData = sheet.getRange(rowIdx, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const trig = String(rowData[idxTrig] || "");
+  const rec = (idxRec !== undefined) ? String(rowData[idxRec] || "") : "";
+  let current = String(rowData[idxAct] || "").trim();
+  
+  if (idxOverride !== undefined) {
+    const override = String(rowData[idxOverride] || "").trim();
+    if (override) current = override;
+  }
+
+  if (!trig) {
+    return { valid: false, message: "No Trigger Phrase 📭" };
+  }
+
+  const rulesJson = loadIntentRules_();
+  const predicted = classifyAction_(trig, rec, rulesJson);
+
+  return {
+    valid: true,
+    match: (current === predicted),
+    trigger: trig,
+    current: current,
+    predicted: predicted
+  };
+}
+
 function setupIntentValidator() {
-  loadIntentRules_(); // Triggers Drive scope
-  SpreadsheetApp.getActiveSpreadsheet().getSheets(); // Triggers Sheets scope
+  loadIntentRules_();
+  SpreadsheetApp.getActiveSpreadsheet().getSheets();
 }
 
 function loadIntentRules_() {
@@ -36,7 +101,6 @@ function loadIntentRules_() {
   return JSON.parse(file.getBlob().getDataAsString());
 }
 
-// ⚡ OPTIMIZED: Checks criteria against in-memory values, no API calls
 function isIntegrationSheet_(sheetName, firstRowValues) {
   if (CONFIG.SKIP_SHEETS.indexOf(sheetName) !== -1) return false;
   if (sheetName.indexOf(CONFIG.LEGACY_MARKER) !== -1) return false;
@@ -47,25 +111,35 @@ function isIntegrationSheet_(sheetName, firstRowValues) {
   return (colA === "Connected App/Integration" && colB.indexOf("Automation Trigger Phrase") !== -1);
 }
 
-// ⚡ OPTIMIZED: Builds map from in-memory header row
 function headerMap_(headerRow) {
   const map = {};
   headerRow.forEach((h, i) => {
-    if (h && String(h).trim()) map[String(h).trim()] = i; // 0-based index
+    if (h && String(h).trim()) map[String(h).trim()] = i;
   });
   return map;
 }
 
+/**
+ * ⚡ REGEX ENABLED CLASSIFIER 🧠
+ * Now treats rule phrases as Regular Expressions!
+ */
 function classifyAction_(trigger, recommended, rulesJson) {
-  const t = ((trigger || "") + " " + (recommended || "")).toLowerCase();
+  const t = ((trigger || "") + " " + (recommended || "")).trim();
   const order = rulesJson.actions_order || [];
   const rules = rulesJson.rules || {};
 
   for (let i = 0; i < order.length; i++) {
     const action = order[i];
-    const phrases = rules[action] || [];
-    for (let j = 0; j < phrases.length; j++) {
-      if (t.indexOf(phrases[j]) !== -1) return action;
+    const patterns = rules[action] || [];
+    
+    for (let j = 0; j < patterns.length; j++) {
+      try {
+        // Create regex from pattern, case-insensitive
+        const regex = new RegExp(patterns[j], 'i');
+        if (regex.test(t)) return action;
+      } catch (e) {
+        console.warn(`Invalid Regex Pattern: ${patterns[j]}`, e);
+      }
     }
   }
   return "Search/Query";
@@ -94,31 +168,23 @@ function runIntentAudit() {
 
   const sheets = ss.getSheets();
 
-  // ⚡ BATCH PROCESSING: Loop sheets, read ONCE, process in memory
   sheets.forEach(sheet => {
     const sheetName = sheet.getName();
-    
-    // Quick check on name before reading data
     if (CONFIG.SKIP_SHEETS.includes(sheetName)) return;
 
-    // ⚡ READ ONCE: Get entire data range
     const values = sheet.getDataRange().getValues();
-    if (values.length < 2) return; // No data or just header
+    if (values.length < 2) return;
 
-    // Check integration criteria using row 0
     if (!isIntegrationSheet_(sheetName, values[0])) return;
 
     const hm = headerMap_(values[0]);
-    // Get 0-based indices
     const idxTrig = hm[CONFIG.TRIGGER_HEADER];
     const idxRec  = hm[CONFIG.RECOMMENDED_HEADER];
     const idxAct  = hm[CONFIG.ACTION_HEADER];
     const idxOverride = hm[CONFIG.OVERRIDE_HEADER];
 
-    // Check if essential columns exist
     if (idxTrig === undefined || idxAct === undefined) return;
 
-    // Loop rows starting from index 1 (Row 2)
     for (let i = 1; i < values.length; i++) {
       const row = values[i];
       const trig = row[idxTrig];
@@ -138,7 +204,7 @@ function runIntentAudit() {
         out.push([
           timestamp,
           sheetName,
-          i + 1, // Row number (1-based)
+          i + 1,
           trig,
           rec,
           current,
@@ -154,17 +220,10 @@ function runIntentAudit() {
   if (out.length === 0) {
     out.push([timestamp, "INFO", "", "", "", "", "", "ALL MATCH ✅", "No mismatches detected."]);
   }
-
-  // ⚡ WRITE ONCE: Dump all results
   rep.getRange(2, 1, out.length, 9).setValues(out);
-
-  // 📊 AUTOMATIC DASHBOARD REFRESH
   createSummaryDashboard();
 }
 
-/**
- * Generates a visual summary dashboard of audit results 📊
- */
 function createSummaryDashboard() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const reportSheet = ss.getSheetByName(CONFIG.REPORT_SHEET_NAME);
@@ -180,7 +239,6 @@ function createSummaryDashboard() {
   const data = reportSheet.getDataRange().getValues();
   if (data.length < 2) return;
 
-  // Process data for dashboard
   const sheetStats = {};
   let totalMismatches = 0;
 
@@ -196,14 +254,12 @@ function createSummaryDashboard() {
     }
   }
 
-  // Header Styling
   dash.getRange("A1:B1").setValues([["QA – INTENT AUDIT SUMMARY", "Generated: " + new Date().toLocaleString()]])
       .setFontWeight("bold").setBackground("#434343").setFontColor("white");
   
   dash.getRange("A3:B3").setValues([["Total Critical Mismatches ⚠️", totalMismatches]])
       .setFontWeight("bold").setFontSize(14).setBackground("#f4cccc");
 
-  // Breakdown Table
   const breakdown = [["Integration Sheet", "Mismatch Count ❌"]];
   Object.keys(sheetStats).forEach(key => breakdown.push([key, sheetStats[key]]));
   
@@ -211,7 +267,6 @@ function createSummaryDashboard() {
     dash.getRange(5, 1, breakdown.length, 2).setValues(breakdown);
     dash.getRange(5, 1, 1, 2).setFontWeight("bold").setBackground("#efefef");
     
-    // Add a simple bar chart
     const chart = dash.newChart()
       .setChartType(Charts.ChartType.BAR)
       .addRange(dash.getRange(5, 1, breakdown.length, 2))
@@ -237,7 +292,7 @@ function setupRulesFile() {
   const defaultRules = {
     "actions_order": ["Create Record", "Update Record", "Search/Query"],
     "rules": {
-      "Create Record": ["new", "add", "create", "insert"],
+      "Create Record": ["new", "add", "create", "insert", "^post\\s"], // Added regex example
       "Update Record": ["change", "update", "modify", "edit"],
       "Search/Query": ["find", "search", "get", "lookup"]
     }
