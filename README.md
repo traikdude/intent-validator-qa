@@ -2,6 +2,7 @@
 
 **A high-performance, batch-processing engine for validating automation intent classification in Google Sheets.**
 
+[![Deploy to Apps Script](https://github.com/traikdude/intent-validator-qa/actions/workflows/deploy.yml/badge.svg)](https://github.com/traikdude/intent-validator-qa/actions/workflows/deploy.yml)
 [![Google Apps Script](https://img.shields.io/badge/Built%20with-Google%20Apps%20Script-4285F4?style=for-the-badge&logo=google-drive)](https://developers.google.com/apps-script)
 [![Status](https://img.shields.io/badge/Status-Active%20%26%20Optimized-success?style=for-the-badge)]()
 
@@ -21,8 +22,8 @@ This tool is designed for speed and scalability, using **Batch Processing** to h
 
 *   **⚡ Batch Optimization**: Reads entire sheets in a single API call, processing data in-memory for blazing-fast performance.
 *   **📊 Auto-Dashboard**: Automatically generates a "QA – Dashboard" sheet with summary statistics and visual bar charts of mismatch rates.
-*   **🧠 Rule-Based Logic**: Uses a central JSON configuration file in Google Drive to define intent classification rules.
-*   **🔍 Precision Scanning**: targeted validation that ignores irrelevant sheets and focuses only on "Connected App/Integration" data.
+*   **🧠 Regex Rules**: Uses regex-enabled pattern matching for precise intent classification (e.g., `^Create.*`).
+*   **🖥️ Validation Sidebar**: Real-time validation UI for checking active rows instantly.
 *   **🛡️ Legacy Protection**: Automatically skips sheets marked with `(Legacy)` to preserve historical data.
 
 ---
@@ -33,7 +34,7 @@ This tool is designed for speed and scalability, using **Batch Processing** to h
 2.  **Locate the Menu**: Look for the **"Validation ⚡"** menu in the top toolbar (wait a few seconds after loading).
 3.  **Run Audit**:
     *   Select **Run Full Intent Audit 🧪** to scan all valid sheets.
-    *   Select **Validate Active Sheet Only 📄** for a quick check on your current tab.
+    *   Select **Show Validation Sidebar 🖥️** for real-time checking.
 4.  **View Results**:
     *   Detailed row-by-row logs are generated in the **"QA – Intent Validation Report"** tab.
     *   A high-level visual summary is created in the **"QA – Dashboard 📊"** tab.
@@ -60,9 +61,10 @@ The system is powered by a `intent_rules.json` file stored in Google Drive. This
 
 ## 👨‍💻 Development
 
-This project is managed via `clasp` and `git`.
+This project is managed via `clasp` and `git` with CI/CD powered by GitHub Actions.
 
-*   **Push updates**: `clasp push`
+*   **Push updates**: `git push origin main` (Triggers Auto-Deploy)
+*   **Manual Push**: `clasp push`
 *   **Pull updates**: `clasp pull`
 *   **Open editor**: `clasp open`
 
