@@ -2,7 +2,7 @@
  * Intent Validator for Google Sheets - Hybrid Workflow Edition ⚡🐍
  * Optimized for Python-normalized headers and automated QA.
  * Author: GAS Master 🧙🏾‍♂️
- * Version: 2.2.0
+ * Version: 2.2.1 (Refactored)
  */
 
 const CONFIG = {
@@ -10,7 +10,10 @@ const CONFIG = {
   SKIP_SHEETS: ["Trigger Matrix", "Trigger Overlaps", "Action Intent Audit", "QA – Intent Validation Report", "QA – Dashboard 📊"],
   LEGACY_MARKER: "(Legacy)",
   NORMALIZED_MARKER: "_Normalized",
-  INTENT_RULES_FILE_ID: "10aXUKl0qKGY6a5aGRyPzpG965_vB8pqw",
+  LEGACY_MARKER: "(Legacy)",
+  NORMALIZED_MARKER: "_Normalized",
+  // Default ID used if no Property is set
+  DEFAULT_RULES_FILE_ID: "10aXUKl0qKGY6a5aGRyPzpG965_vB8pqw",
   // Standardized keys matching Python NLP output
   OVERRIDE_HEADER: "actionintentoverride",
   ACTION_HEADER: "actiontypeintent",
@@ -144,7 +147,11 @@ function applyPredictedIntent(row, predictedValue) {
  * Loads intent rules from Google Drive 📂
  */
 function loadIntentRules_() {
-  const file = DriveApp.getFileById(CONFIG.INTENT_RULES_FILE_ID);
+  // Try to get dynamic ID first, fallback to default
+  const props = PropertiesService.getScriptProperties();
+  const fileId = props.getProperty("RULES_FILE_ID") || CONFIG.DEFAULT_RULES_FILE_ID;
+  
+  const file = DriveApp.getFileById(fileId);
   return JSON.parse(file.getBlob().getDataAsString());
 }
 
@@ -231,10 +238,30 @@ function classifyAction_(trigger, recommended, rulesJson) {
  */
 function setupIntentValidator() {
   try {
-    loadIntentRules_();
-    SpreadsheetApp.getUi().alert("Setup Successful! 🚀");
+    const ui = SpreadsheetApp.getUi();
+    const props = PropertiesService.getScriptProperties();
+    const currentId = props.getProperty("RULES_FILE_ID") || CONFIG.DEFAULT_RULES_FILE_ID;
+
+    const response = ui.prompt(
+      "Setup / Configuration 🔐", 
+      `Current Rules File ID:\n${currentId}\n\nEnter new File ID to override (or leave empty to keep current):`,
+      ui.ButtonSet.OK_CANCEL
+    );
+
+    if (response.getSelectedButton() == ui.Button.OK) {
+      const input = response.getResponseText().trim();
+      if (input) {
+        props.setProperty("RULES_FILE_ID", input);
+        ui.alert(`Configuration Updated! 🚀\nNew ID: ${input}`);
+      } else {
+        ui.alert("No changes made.");
+      }
+      
+      // Verify access
+      loadIntentRules_();
+    }
   } catch (e) {
-    SpreadsheetApp.getUi().alert("Setup Failed! ⚠️");
+    SpreadsheetApp.getUi().alert("Setup Failed! ⚠️ " + e.message);
   }
 }
 
