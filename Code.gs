@@ -367,3 +367,18 @@ function createSummaryDashboard() {
   dash.autoResizeColumns(1, 4);
   dash.activate();
 }
+
+/**
+ * 🛠️ LOCAL TESTING SHIM
+ * Exports pure functions for Node.js testing.
+ * This block is ignored in Google Apps Script (where 'module' is undefined).
+ */
+if (typeof module !== 'undefined') {
+  module.exports = {
+    normalizeHeader_,
+    classifyAction_,
+    isIntegrationSheet_,
+    headerMap_,
+    CONFIG
+  };
+}
