@@ -667,6 +667,8 @@ function onOpen() {
       .addItem('📊 Normalize Current Sheet', 'normalizeCurrentSheet')
       .addItem('📋 Normalize Selected Range', 'normalizeSelectedRange')
       .addSeparator()
+      .addItem('🐍 Python Normalizer v2.0 (Colab)', 'openPythonNormalizer')
+      .addSeparator()
       .addItem('🔍 Preview Normalization (No Changes)', 'previewNormalization')
       .addItem('📈 Show Statistics', 'showStatistics')
       .addSeparator()
