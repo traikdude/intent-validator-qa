@@ -20,8 +20,14 @@
  * 5. Run "onOpen" function once to create menu
  * 6. Use the "Normalizer" menu that appears in your spreadsheet
  * * AUTHOR: Generated for Erik's Gemini Trigger Matrix Project
- * VERSION: 1.0.0
+ * VERSION: 2.0.0 (Enhanced)
  * DATE: 2026-01-05
+ * CHANGELOG V2.0:
+ *  - Added comprehensive error handling
+ * - Added large dataset warnings
+ *  - Added regex safety limits
+ *  - Fixed case sensitivity bugs
+ *  - Improved semantic matching
  * ============================================================================
  */
 
@@ -30,6 +36,9 @@
 // ============================================================================
 
 const CONFIG = {
+  // Version
+  VERSION: '2.0.0',
+  
   // Column indices (0-based) in your source sheet
   SOURCE_COLUMNS: {
     APP_INTEGRATION: 0,      // Column A: App/Integration name
@@ -51,6 +60,15 @@ const CONFIG = {
   
   // Minimum trigger length to be considered valid
   MIN_TRIGGER_LENGTH: 2,
+  
+  // Performance & Safety Limits (NEW IN V2.0)
+  LIMITS: {
+    LARGE_DATASET_WARNING: 5000,      // Warn if sheet has more than this many rows
+    MAX_OUTPUT_TEXT_LENGTH: 10000,    // Truncate output text before regex parsing
+    MAX_REGEX_MATCHES: 1000,          // Maximum matches per regex pattern
+    MIN_BULLET_LENGTH: 10,            // Minimum bullet behavior text length
+    MIN_NUMBERED_LENGTH: 5,           // Minimum numbered behavior text length
+  },
   
   // Headers for normalized output
   OUTPUT_HEADERS: [
@@ -643,17 +661,21 @@ const SEMANTIC_RULES = {
  * Creates custom menu when spreadsheet opens
  */
 function onOpen() {
-  const ui = SpreadsheetApp.getUi();
-  ui.createMenu('🔧 Normalizer')
-    .addItem('📊 Normalize Current Sheet', 'normalizeCurrentSheet')
-    .addItem('📋 Normalize Selected Range', 'normalizeSelectedRange')
-    .addSeparator()
-    .addItem('🔍 Preview Normalization (No Changes)', 'previewNormalization')
-    .addItem('📈 Show Statistics', 'showStatistics')
-    .addSeparator()
-    .addItem('⚙️ Configure Settings', 'showSettingsDialog')
-    .addItem('❓ Help', 'showHelp')
-    .addToUi();
+  try {
+    const ui = SpreadsheetApp.getUi();
+    ui.createMenu('🔧 Normalizer v' + CONFIG.VERSION)
+      .addItem('📊 Normalize Current Sheet', 'normalizeCurrentSheet')
+      .addItem('📋 Normalize Selected Range', 'normalizeSelectedRange')
+      .addSeparator()
+      .addItem('🔍 Preview Normalization (No Changes)', 'previewNormalization')
+      .addItem('📈 Show Statistics', 'showStatistics')
+      .addSeparator()
+      .addItem('⚙️ Configure Settings', 'showSettingsDialog')
+      .addItem('❓ Help', 'showHelp')
+      .addToUi();
+  } catch (error) {
+    Logger.log('ERROR in onOpen: ' + error.message);
+  }
 }
 
 // ============================================================================
@@ -664,53 +686,80 @@ function onOpen() {
  * Main entry point: Normalizes the entire active sheet
  */
 function normalizeCurrentSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sourceSheet = ss.getActiveSheet();
-  const sourceName = sourceSheet.getName();
-  
-  // Get all data from source sheet
-  const data = sourceSheet.getDataRange().getValues();
-  
-  if (data.length < 2) {
-    SpreadsheetApp.getUi().alert('Error: Sheet appears to be empty or has no data rows.');
-    return;
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sourceSheet = ss.getActiveSheet();
+    const sourceName = sourceSheet.getName();
+    
+    // Get all data from source sheet
+    const data = sourceSheet.getDataRange().getValues();
+    
+    if (data.length < 2) {
+      SpreadsheetApp.getUi().alert('Error: Sheet appears to be empty or has no data rows.');
+      return;
+    }
+    
+    // NEW IN V2.0: Large dataset warning
+    if (data.length > CONFIG.LIMITS.LARGE_DATASET_WARNING) {
+      const ui = SpreadsheetApp.getUi();
+      const response = ui.alert(
+        'Large Dataset Warning',
+        'This sheet has ' + data.length + ' rows. Processing may take several minutes.\n\nContinue?',
+        ui.ButtonSet.YES_NO
+      );
+      if (response !== ui.Button.YES) {
+        return;
+      }
+    }
+    
+    // Perform normalization
+    const result = normalizeData(data, sourceName);
+    
+    // Create output sheet
+    createOutputSheet(ss, result.normalizedRows, result.stats);
+    
+    // Show completion message
+    showCompletionMessage(result.stats);
+    
+  } catch (error) {
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('Error', 'Normalization failed: ' + error.message, ui.ButtonSet.OK);
+    Logger.log('ERROR in normalizeCurrentSheet: ' + error.stack);
   }
-  
-  // Perform normalization
-  const result = normalizeData(data, sourceName);
-  
-  // Create output sheet
-  createOutputSheet(ss, result.normalizedRows, result.stats);
-  
-  // Show completion message
-  showCompletionMessage(result.stats);
 }
 
 /**
  * Normalizes only the currently selected range
  */
 function normalizeSelectedRange() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sourceSheet = ss.getActiveSheet();
-  const selection = sourceSheet.getSelection();
-  const range = selection.getActiveRange();
-  
-  if (!range) {
-    SpreadsheetApp.getUi().alert('Error: Please select a range first.');
-    return;
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sourceSheet = ss.getActiveSheet();
+    const selection = sourceSheet.getSelection();
+    const range = selection.getActiveRange();
+    
+    if (!range) {
+      SpreadsheetApp.getUi().alert('Error: Please select a range first.');
+      return;
+    }
+    
+    const data = range.getValues();
+    const sourceName = sourceSheet.getName() + '_Selection';
+    
+    // Perform normalization
+    const result = normalizeData(data, sourceName);
+    
+    // Create output sheet
+    createOutputSheet(ss, result.normalizedRows, result.stats);
+    
+    // Show completion message
+    showCompletionMessage(result.stats);
+    
+  } catch (error) {
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('Error', 'Normalization failed: ' + error.message, ui.ButtonSet.OK);
+    Logger.log('ERROR in normalizeSelectedRange: ' + error.stack);
   }
-  
-  const data = range.getValues();
-  const sourceName = sourceSheet.getName() + '_Selection';
-  
-  // Perform normalization
-  const result = normalizeData(data, sourceName);
-  
-  // Create output sheet
-  createOutputSheet(ss, result.normalizedRows, result.stats);
-  
-  // Show completion message
-  showCompletionMessage(result.stats);
 }
 
 /**
@@ -787,8 +836,8 @@ function normalizeData(data, sourceName) {
     const sourceRef = String(row[CONFIG.SOURCE_COLUMNS.SOURCE_REF] || '');
     const dependencies = String(row[CONFIG.SOURCE_COLUMNS.DEPENDENCIES] || '');
     
-    // Skip category headers and empty rows
-    if (!app || CONFIG.SKIP_PREFIXES.some(prefix => app.startsWith(prefix))) {
+    // FIXED IN V2.0: Consistent case-insensitive skip check
+    if (!app || CONFIG.SKIP_PREFIXES.some(prefix => app.toLowerCase().startsWith(prefix.toLowerCase()))) {
       continue;
     }
     
@@ -860,28 +909,37 @@ function parseOutputBlock(outputText) {
     return behaviors;
   }
   
-  // Extract bulleted items (● • ○ ▸ →)
+  // NEW IN V2.0: Truncate very large outputs to prevent regex hangs
+  const safeOutput = outputText.substring(0, CONFIG.LIMITS.MAX_OUTPUT_TEXT_LENGTH);
+  
+  // Extract bulleted items (● • ○ ▸ → ✓)
   const bulletPattern = /[●•○▸→✓]\s*([^\n●•○▸→✓]+)/g;
   let match;
-  while ((match = bulletPattern.exec(outputText)) !== null) {
+  let matchCount = 0;
+  
+  // NEW IN V2.0: Iteration limit protection
+  while ((match = bulletPattern.exec(safeOutput)) !== null && matchCount++ < CONFIG.LIMITS.MAX_REGEX_MATCHES) {
     const behavior = match[1].trim();
-    if (behavior.length > 10) {
+    if (behavior.length > CONFIG.LIMITS.MIN_BULLET_LENGTH) {
       behaviors.push({ type: 'bullet', text: behavior.substring(0, 300) });
     }
   }
   
   // Extract numbered items (1. xxx, 2. xxx)
   const numberedPattern = /\d+[\.\)]\s*([^:\n]+)/g;
-  while ((match = numberedPattern.exec(outputText)) !== null) {
+  matchCount = 0;
+  while ((match = numberedPattern.exec(safeOutput)) !== null && matchCount++ < CONFIG.LIMITS.MAX_REGEX_MATCHES) {
     const behavior = match[1].trim();
-    if (behavior.length > 5) {
+    if (behavior.length > CONFIG.LIMITS.MIN_NUMBERED_LENGTH) {
       behaviors.push({ type: 'numbered', text: behavior.substring(0, 200) });
     }
   }
   
-  // Extract action phrases
-  const actionPattern = /(Search|Show|Display|Create|Open|Find|Calculate|Generate|Play|Send|Navigate|Set|Configure|Access|Start|Enable|Disable)\s+[^,.\n]{5,60}/gi;
-  while ((match = actionPattern.exec(outputText)) !== null) {
+  // ENHANCED IN V2.0: Expanded action verb list
+  const verbs = 'Search|Show|Display|Create|Open|Find|Calculate|Generate|Play|Send|Navigate|Set|Configure|Access|Start|Enable|Disable|Launch|Execute|Run|Activate|Trigger';
+  const actionPattern = new RegExp('(' + verbs + ')(ing|s|es|ed)?\\s+[^,.\\n]{5,60}', 'gi');
+  matchCount = 0;
+  while ((match = actionPattern.exec(safeOutput)) !== null && matchCount++ < CONFIG.LIMITS.MAX_REGEX_MATCHES) {
     behaviors.push({ type: 'action', text: match[0].trim() });
   }
   
@@ -977,9 +1035,9 @@ function createOutputSheet(ss, normalizedRows, stats) {
     if (response === ui.Button.YES) {
       outputSheet.clear();
     } else {
-      // Create with timestamp
-      const timestamp = Utilities.formatDate(new Date(), 'GMT', 'yyyyMMdd_HHmmss');
-      outputSheet = ss.insertSheet(`${CONFIG.OUTPUT_SHEET_NAME}_${timestamp}`);
+      // NEW IN V2.0: Use millisecond timestamp to avoid collisions
+      const timestamp = new Date().getTime();
+      outputSheet = ss.insertSheet(CONFIG.OUTPUT_SHEET_NAME + '_' + timestamp);
     }
   } else {
     outputSheet = ss.insertSheet(CONFIG.OUTPUT_SHEET_NAME);
@@ -1019,16 +1077,16 @@ function createOutputSheet(ss, normalizedRows, stats) {
   const statsRow = normalizedRows.length + 4;
   outputSheet.getRange(statsRow, 1).setValue('📊 NORMALIZATION STATISTICS');
   outputSheet.getRange(statsRow, 1).setFontWeight('bold');
-  
-  const statsData = [
-    ['Total 1:1 Mappings', stats.outputRows],
-    ['Source Rows Processed', stats.sourceRows],
-    ['Total Triggers Found', stats.totalTriggers],
-    ['Semantic Match Rate', `${stats.matchRate}%`],
-    ['Unique Apps', stats.uniqueApps],
-    ['Unique Outputs', stats.uniqueOutputs],
-    ['Generated', new Date().toISOString()]
-  ];
+    const statsData = [
+      ['Total 1:1 Mappings', stats.outputRows],
+      ['Source Rows Processed', stats.sourceRows],
+      ['Total Triggers Found', stats.totalTriggers],
+      ['Semantic Match Rate', stats.matchRate + '%'],
+      ['Unique Apps', stats.uniqueApps],
+      ['Unique Outputs', stats.uniqueOutputs],
+      ['Generated', new Date().toISOString()],
+      ['Version', CONFIG.VERSION]
+    ];
   
   outputSheet.getRange(statsRow + 1, 1, statsData.length, 2).setValues(statsData);
   
@@ -1041,18 +1099,14 @@ function createOutputSheet(ss, normalizedRows, stats) {
  * @param {Object} stats - Statistics object
  */
 function showCompletionMessage(stats) {
-  const message = `
-✅ NORMALIZATION COMPLETE
-=========================
-
-📊 Results:
-• ${stats.outputRows} trigger→behavior mappings created
-• ${stats.semanticMatches} semantic matches (${stats.matchRate}%)
-• ${stats.uniqueApps} apps/integrations
-• ${stats.uniqueOutputs} unique outputs
-
-📋 Output saved to sheet: "${CONFIG.OUTPUT_SHEET_NAME}"
-  `;
+  const message = '\n✅ NORMALIZATION COMPLETE (v' + CONFIG.VERSION + ')\n' +
+    '=========================\n\n' +
+    '📊 Results:\n' +
+    '• ' + stats.outputRows + ' trigger→behavior mappings created\n' +
+    '• ' + stats.semanticMatches + ' semantic matches (' + stats.matchRate + '%)\n' +
+    '• ' + stats.uniqueApps + ' apps/integrations\n' +
+    '• ' + stats.uniqueOutputs + ' unique outputs\n\n' +
+    '📋 Output saved to sheet: "' + CONFIG.OUTPUT_SHEET_NAME + '"';
   
   SpreadsheetApp.getUi().alert(message);
 }
@@ -1117,41 +1171,7 @@ Expected output rows after normalization: ~${estimatedTriggers}
  * Show help dialog
  */
 function showHelp() {
-  const help = `
-🔧 TRIGGER MATRIX NORMALIZER - HELP
-====================================
-
-PURPOSE:
-Transform bundled trigger-output data into 1:1 mappings.
-
-HOW TO USE:
-1. Open your source sheet with trigger data
-2. Use the Normalizer menu:
-   • "Normalize Current Sheet" - Process entire sheet
-   • "Normalize Selected Range" - Process selection only
-   • "Preview Normalization" - See results without changes
-   • "Show Statistics" - View sheet metrics
-
-EXPECTED SOURCE FORMAT:
-Column A: App/Integration name
-Column B: Trigger phrases (semicolon-separated)
-Column C: Expected output/behavior
-Column D: Category (optional)
-Column E: Source reference (optional)
-Column F: Dependencies (optional)
-
-OUTPUT:
-Creates new sheet with one row per trigger:
-[App] | [Single Trigger] | [Specific Output] | ...
-
-CUSTOMIZATION:
-Edit the CONFIG object at the top of the script to:
-• Change column mappings
-• Modify trigger delimiter
-• Adjust output sheet name
-
-Add custom semantic rules to SEMANTIC_RULES object.
-  `;
+  const help = '\n🔧 TRIGGER MATRIX NORMALIZER v' + CONFIG.VERSION + ' - HELP\n====================================\n\nPURPOSE:\nTransform bundled trigger-output data into 1:1 mappings.\n\nHOW TO USE:\n1. Open your source sheet with trigger data\n2. Use the Normalizer menu:\n   • "Normalize Current Sheet" - Process entire sheet\n   • "Normalize Selected Range" - Process selection only\n   • "Preview Normalization" - See results without changes\n   • "Show Statistics" - View sheet metrics\n\nEXPECTED SOURCE FORMAT:\nColumn A: App/Integration name\nColumn B: Trigger phrases (semicolon-separated)\nColumn C: Expected output/behavior\nColumn D: Category (optional)\nColumn E: Source reference (optional)\nColumn F: Dependencies (optional)\n\nOUTPUT:\nCreates new sheet with one row per trigger:\n[App] | [Single Trigger] | [Specific Output] | ...\n\nCUSTOMIZATION:\nEdit the CONFIG object at the top of the script to:\n• Change column mappings\n• Modify trigger delimiter\n• Adjust output sheet name\n\nAdd custom semantic rules to SEMANTIC_RULES object.\n  ';
   
   SpreadsheetApp.getUi().alert(help);
 }
@@ -1164,10 +1184,12 @@ function showSettingsDialog() {
   ui.alert(
     '⚙️ Settings',
     'Current configuration:\n\n' +
-    `• Trigger Column: ${String.fromCharCode(65 + CONFIG.SOURCE_COLUMNS.TRIGGER_PHRASES)}\n` +
-    `• Output Column: ${String.fromCharCode(65 + CONFIG.SOURCE_COLUMNS.OUTPUT_BEHAVIOR)}\n` +
-    `• Delimiter: "${CONFIG.TRIGGER_DELIMITER}"\n` +
-    `• Output Sheet: "${CONFIG.OUTPUT_SHEET_NAME}"\n\n` +
+    '• Version: ' + CONFIG.VERSION + '\n' +
+    '• Trigger Column: ' + String.fromCharCode(65 + CONFIG.SOURCE_COLUMNS.TRIGGER_PHRASES) + '\n' +
+    '• Output Column: ' + String.fromCharCode(65 + CONFIG.SOURCE_COLUMNS.OUTPUT_BEHAVIOR) + '\n' +
+    '• Delimiter: "' + CONFIG.TRIGGER_DELIMITER + '"\n' +
+    '• Output Sheet: "' + CONFIG.OUTPUT_SHEET_NAME + '"\n' +
+    '• Large Dataset Warning: ' + CONFIG.LIMITS.LARGE_DATASET_WARNING + ' rows\n\n' +
     'To modify settings, edit the CONFIG object in the script editor.',
     ui.ButtonSet.OK
   );
