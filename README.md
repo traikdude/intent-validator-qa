@@ -26,6 +26,7 @@ This tool is designed for speed and scalability, using **Batch Processing** to h
 *   **📊 Auto-Dashboard**: Automatically generates a "QA – Dashboard" sheet with summary statistics and visual bar charts of mismatch rates.
 *   **🔍 Regex Rules**: Uses regex-enabled pattern matching for precise intent classification (e.g., `^Create.*`).
 *   **🛡️ Legacy Protection**: Automatically skips sheets marked with `(Legacy)` to preserve historical data.
+*   **🔧 Trigger Matrix Normalizer**: Includes a normalization utility (`TriggerMatrixNormalizer.gs`) to split bundled triggers and map behaviors semantically.
 
 ---
 
