@@ -1,1 +1,16 @@
-node_modules/
+# Ignore sub-repositories and large folders
+/qklipto/
+/AUTOHOTKEY/
+
+# Ignore session transcripts and logs
+/SESSION TRANSCRIPTS/
+/tests/
+
+# Ignore other project folders likely having their own git or temporary
+/_CLASP_GAS_PROJECTS/
+/my-test-project/
+/CLAUDE_CODE_my-project/
+
+# OS files
+Thumbs.db
+Desktop.ini
